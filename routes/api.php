@@ -2,12 +2,15 @@
 
 use App\Http\Controllers\Api\AuthController as ApiAuthController;
 use App\Http\Controllers\Api\BootstrapController;
+use App\Http\Controllers\Api\LicenseController;
 use App\Http\Controllers\Api\SessionController;
 use App\Http\Controllers\Api\ShiftController;
 use App\Http\Controllers\Api\SyncController;
 use Illuminate\Support\Facades\Route;
 
 Route::post('/auth/login', [ApiAuthController::class, 'login']);
+Route::post('/license/activate', [LicenseController::class, 'activate']);
+Route::post('/license/renew', [LicenseController::class, 'renew']);
 
 Route::middleware('auth:sanctum')->group(function () {
     Route::post('/auth/logout', [ApiAuthController::class, 'logout']);

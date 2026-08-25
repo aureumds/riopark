@@ -14,6 +14,7 @@
             <p class="font-bold text-lg">{{ session.plate }}</p>
             <p class="text-xs text-gray-500">{{ formatTime(session.entry_at) }}</p>
           </div>
+          <router-link :to="'/operador/saida'" class="text-sm font-medium" style="color: var(--color-accent)">Saída</router-link>
         </div>
         <p v-if="!sessionStore.active.length" class="text-center text-gray-500 py-8">Nenhum veículo no pátio</p>
       </div>

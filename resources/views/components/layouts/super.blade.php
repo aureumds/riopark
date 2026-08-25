@@ -11,7 +11,6 @@
     <title>{{ $title }} — Rio Park</title>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     @livewireStyles
-    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
 </head>
 <body class="bg-slate-100 text-slate-900 font-sans antialiased" x-data="{ sidebarOpen: false }">
     <div class="min-h-screen lg:flex">
@@ -48,7 +47,7 @@
                 </a>
 
                 <a href="{{ route('super.companies') }}"
-                   class="super-nav-link {{ request()->routeIs('super.companies') ? 'super-nav-link-active' : '' }}">
+                   class="super-nav-link {{ request()->routeIs('super.companies*') ? 'super-nav-link-active' : '' }}">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg>
                     Empresas
                 </a>
@@ -57,6 +56,12 @@
                    class="super-nav-link {{ request()->routeIs('super.plans') ? 'super-nav-link-active' : '' }}">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/></svg>
                     Planos
+                </a>
+
+                <a href="{{ route('super.licenses') }}"
+                   class="super-nav-link {{ request()->routeIs('super.licenses') ? 'super-nav-link-active' : '' }}">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"/></svg>
+                    Licenças
                 </a>
             </nav>
 

@@ -6,14 +6,18 @@ import EntryView from '../views/EntryView.vue';
 import ExitView from '../views/ExitView.vue';
 import YardView from '../views/YardView.vue';
 import ShiftView from '../views/ShiftView.vue';
+import ClosingView from '../views/ClosingView.vue';
+import LicenseView from '../views/LicenseView.vue';
 
 const routes = [
   { path: '/operador/login', name: 'login', component: LoginView, meta: { guest: true } },
-  { path: '/operador', name: 'home', component: HomeView },
-  { path: '/operador/entrada', name: 'entry', component: EntryView },
-  { path: '/operador/saida', name: 'exit', component: ExitView },
-  { path: '/operador/patio', name: 'yard', component: YardView },
-  { path: '/operador/turno', name: 'shift', component: ShiftView },
+  { path: '/operador/licenca', name: 'license', component: LicenseView },
+  { path: '/operador', name: 'home', component: HomeView, meta: { needsLicense: true } },
+  { path: '/operador/entrada', name: 'entry', component: EntryView, meta: { needsLicense: true } },
+  { path: '/operador/saida', name: 'exit', component: ExitView, meta: { needsLicense: true } },
+  { path: '/operador/patio', name: 'yard', component: YardView, meta: { needsLicense: true } },
+  { path: '/operador/turno', name: 'shift', component: ShiftView, meta: { needsLicense: true } },
+  { path: '/operador/fechamento', name: 'closing', component: ClosingView, meta: { needsLicense: true } },
 ];
 
 const router = createRouter({
@@ -27,7 +31,10 @@ router.beforeEach((to) => {
     return { name: 'login' };
   }
   if (to.meta.guest && auth.token) {
-    return { name: 'home' };
+    return auth.licenseValid ? { name: 'home' } : { name: 'license' };
+  }
+  if (to.meta.needsLicense && auth.token && !auth.licenseValid) {
+    return { name: 'license' };
   }
 });
 

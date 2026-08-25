@@ -50,6 +50,7 @@
       </div>
 
       <p v-if="message" class="text-sm text-green-700">{{ message }}</p>
+      <p v-if="error" class="text-sm text-red-600">{{ error }}</p>
     </main>
   </div>
 </template>
@@ -63,14 +64,25 @@ const shiftStore = useShiftStore();
 const openingBalance = ref(0);
 const closingBalance = ref(0);
 const message = ref('');
+const error = ref('');
 
 async function openShift() {
-  await shiftStore.open(openingBalance.value || 0);
-  message.value = 'Turno aberto';
+  error.value = '';
+  try {
+    await shiftStore.open(openingBalance.value || 0);
+    message.value = 'Turno aberto';
+  } catch (e) {
+    error.value = e.message;
+  }
 }
 
 async function closeShift() {
-  await shiftStore.close(closingBalance.value || 0);
-  message.value = 'Turno fechado';
+  error.value = '';
+  try {
+    await shiftStore.close(closingBalance.value || 0);
+    message.value = 'Turno fechado';
+  } catch (e) {
+    error.value = e.message;
+  }
 }
 </script>

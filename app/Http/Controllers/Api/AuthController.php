@@ -38,6 +38,13 @@ class AuthController extends Controller
             ]);
         }
 
+        $company = $user->company;
+        if (! $company || ! app(\App\Services\LicenseService::class)->companyCanOperate($company)) {
+            throw ValidationException::withMessages([
+                'email' => ['Mensalidade em atraso. Conecte após a liberação no painel.'],
+            ]);
+        }
+
         $user->tokens()->delete();
         $token = $user->createToken('operator-pos', ['operator'])->plainTextToken;
 

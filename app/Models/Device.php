@@ -7,21 +7,23 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-class ParkingLot extends Model
+class Device extends Model
 {
     use BelongsToCompany;
 
     protected $fillable = [
         'company_id',
-        'name',
-        'address',
-        'capacity',
+        'parking_lot_id',
+        'device_uid',
+        'label',
+        'last_seen_at',
         'active',
     ];
 
     protected function casts(): array
     {
         return [
+            'last_seen_at' => 'datetime',
             'active' => 'boolean',
         ];
     }
@@ -31,23 +33,21 @@ class ParkingLot extends Model
         return $this->belongsTo(Company::class);
     }
 
-    public function shifts(): HasMany
+    public function parkingLot(): BelongsTo
     {
-        return $this->hasMany(Shift::class);
+        return $this->belongsTo(ParkingLot::class);
     }
 
-    public function parkingSessions(): HasMany
+    public function licenses(): HasMany
     {
-        return $this->hasMany(ParkingSession::class);
+        return $this->hasMany(License::class);
     }
 
-    public function operators(): HasMany
+    public function currentLicense(): ?License
     {
-        return $this->hasMany(User::class);
-    }
-
-    public function devices(): HasMany
-    {
-        return $this->hasMany(Device::class);
+        return $this->licenses()
+            ->whereNull('revoked_at')
+            ->latest('issued_at')
+            ->first();
     }
 }

@@ -36,6 +36,12 @@
         >
           Gerenciar turno
         </router-link>
+        <router-link
+          to="/operador/fechamento"
+          class="block py-4 text-center rounded-2xl border bg-white text-sm font-medium text-gray-700"
+        >
+          Fechamento local
+        </router-link>
       </div>
 
       <button type="button" class="w-full text-sm text-gray-500 py-2" @click="logout">Sair</button>

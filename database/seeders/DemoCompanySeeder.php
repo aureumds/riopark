@@ -28,8 +28,17 @@ class DemoCompanySeeder extends Seeder
                 'print_ticket_on_entry' => true,
                 'print_ticket_on_exit' => true,
                 'active' => true,
+                'subscription_status' => 'paid',
+                'paid_until' => now()->addDays(30)->toDateString(),
             ]
         );
+
+        if (! $company->paid_until) {
+            $company->update([
+                'subscription_status' => 'paid',
+                'paid_until' => now()->addDays(30)->toDateString(),
+            ]);
+        }
 
         $lot = ParkingLot::firstOrCreate(
             ['company_id' => $company->id, 'name' => 'Pátio Central'],

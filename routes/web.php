@@ -35,13 +35,17 @@ Route::view('/operador', 'operator')->name('operator');
 Route::middleware(['auth', 'role:super_admin'])->prefix('super')->name('super.')->group(function () {
     Route::get('/dashboard', \App\Livewire\Super\Dashboard::class)->name('dashboard');
     Route::get('/companies', \App\Livewire\Super\Companies::class)->name('companies');
+    Route::get('/companies/{company}/edit', [\App\Http\Controllers\Super\CompanyController::class, 'edit'])->name('companies.edit');
+    Route::put('/companies/{company}', [\App\Http\Controllers\Super\CompanyController::class, 'update'])->name('companies.update');
     Route::get('/plans', \App\Livewire\Super\Plans::class)->name('plans');
+    Route::get('/licenses', \App\Livewire\Super\Licenses::class)->name('licenses');
 });
 
 Route::middleware(['auth', 'role:company_admin'])->prefix('admin')->name('admin.')->group(function () {
     Route::get('/dashboard', \App\Livewire\Admin\Dashboard::class)->name('dashboard');
     Route::get('/parking-lots', \App\Livewire\Admin\ParkingLots::class)->name('parking-lots');
     Route::get('/operators', \App\Livewire\Admin\Operators::class)->name('operators');
+    Route::get('/licenses', \App\Livewire\Admin\Licenses::class)->name('licenses');
     Route::get('/tariff', \App\Livewire\Admin\Tariff::class)->name('tariff');
     Route::get('/settings', \App\Livewire\Admin\Settings::class)->name('settings');
     Route::get('/shifts', \App\Livewire\Admin\Shifts::class)->name('shifts');

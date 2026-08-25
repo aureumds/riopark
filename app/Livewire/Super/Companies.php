@@ -5,8 +5,8 @@ namespace App\Livewire\Super;
 use App\Models\Company;
 use App\Models\Plan;
 use App\Models\User;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 use Livewire\Component;
 
 class Companies extends Component
@@ -19,7 +19,7 @@ class Companies extends Component
 
     public string $payer_name = '';
 
-    public ?int $plan_id = null;
+    public mixed $plan_id = null;
 
     public string $primary_color = '#1e40af';
 
@@ -29,82 +29,81 @@ class Companies extends Component
 
     public string $admin_password = '';
 
-    public ?int $editingId = null;
+    public function updatedName(string $value): void
+    {
+        $this->slug = Str::slug($value);
+    }
 
     public function save(): void
     {
+        $this->plan_id = $this->plan_id === '' ? null : $this->plan_id;
+
         $this->validate([
             'name' => ['required', 'string', 'max:255'],
-            'slug' => ['required', 'string', 'max:255', 'unique:companies,slug,'.$this->editingId],
+            'slug' => ['required', 'string', 'max:255', 'unique:companies,slug'],
             'phone' => ['nullable', 'string', 'max:20'],
             'payer_name' => ['nullable', 'string', 'max:255'],
             'plan_id' => ['nullable', 'exists:plans,id'],
             'primary_color' => ['required', 'string'],
             'accent_color' => ['required', 'string'],
+            'admin_email' => [
+                Rule::requiredIf(filled($this->admin_password)),
+                'nullable',
+                'email',
+                'max:255',
+                'unique:users,email',
+            ],
+            'admin_password' => [
+                Rule::requiredIf(filled($this->admin_email)),
+                'nullable',
+                'string',
+                'min:6',
+            ],
         ]);
 
-        $data = [
+        $company = Company::create([
             'name' => $this->name,
             'slug' => Str::slug($this->slug ?: $this->name),
             'phone' => $this->phone ?: null,
             'payer_name' => $this->payer_name ?: null,
-            'plan_id' => $this->plan_id,
+            'plan_id' => $this->plan_id ?: null,
             'primary_color' => $this->primary_color,
             'accent_color' => $this->accent_color,
-        ];
+            'active' => true,
+            'subscription_status' => 'trial',
+        ]);
 
-        if ($this->editingId) {
-            Company::findOrFail($this->editingId)->update($data);
-        } else {
-            $company = Company::create([...$data, 'active' => true]);
-
-            if ($this->admin_email && $this->admin_password) {
-                $admin = User::create([
-                    'name' => $this->name.' Admin',
-                    'email' => $this->admin_email,
-                    'password' => Hash::make($this->admin_password),
-                    'company_id' => $company->id,
-                    'active' => true,
-                ]);
-                $admin->syncRoles(['company_admin']);
-            }
+        if ($this->admin_email && $this->admin_password) {
+            $admin = User::create([
+                'name' => $this->name.' Admin',
+                'email' => $this->admin_email,
+                'password' => $this->admin_password,
+                'company_id' => $company->id,
+                'active' => true,
+            ]);
+            $admin->syncRoles(['company_admin']);
         }
 
-        $this->resetForm();
-        session()->flash('success', 'Empresa salva com sucesso.');
-    }
+        session()->flash('success', 'Empresa cadastrada.');
 
-    public function edit(int $id): void
-    {
-        $company = Company::findOrFail($id);
-        $this->editingId = $company->id;
-        $this->name = $company->name;
-        $this->slug = $company->slug;
-        $this->phone = $company->phone ?? '';
-        $this->payer_name = $company->payer_name ?? '';
-        $this->plan_id = $company->plan_id;
-        $this->primary_color = $company->primary_color;
-        $this->accent_color = $company->accent_color;
+        $this->reset('name', 'slug', 'phone', 'payer_name', 'plan_id', 'admin_email', 'admin_password');
+        $this->primary_color = '#1e40af';
+        $this->accent_color = '#f59e0b';
     }
 
     public function toggleActive(int $id): void
     {
         $company = Company::findOrFail($id);
         $company->update(['active' => ! $company->active]);
+        session()->flash('success', $company->active ? 'Empresa ativada.' : 'Empresa desativada.');
     }
 
-    public function resetForm(): void
+    public function delete(int $id): void
     {
-        $this->editingId = null;
-        $this->name = '';
-        $this->slug = '';
-        $this->phone = '';
-        $this->payer_name = '';
-        $this->plan_id = null;
-        $this->primary_color = '#1e40af';
-        $this->accent_color = '#f59e0b';
-        $this->admin_email = '';
-        $this->admin_password = '';
+        $company = Company::findOrFail($id);
+        $name = $company->name;
+        $company->delete();
+        session()->flash('success', "Empresa \"{$name}\" excluída.");
     }
 
     public function render()
@@ -112,6 +111,6 @@ class Companies extends Component
         return view('livewire.super.companies', [
             'companies' => Company::with('plan')->withCount('users')->orderBy('name')->get(),
             'plans' => Plan::where('active', true)->orderBy('name')->get(),
-        ])->layout('layouts.super', ['title' => 'Empresas', 'subtitle' => 'Gerencie os clientes da plataforma']);
+        ])->layout('components.layouts.super', ['title' => 'Empresas', 'subtitle' => 'Cadastre e gerencie os clientes']);
     }
 }

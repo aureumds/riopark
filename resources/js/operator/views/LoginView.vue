@@ -56,7 +56,7 @@ async function submit() {
     await shiftStore.init();
     router.push({ name: 'home' });
   } catch (e) {
-    error.value = e.response?.data?.message || 'Falha no login';
+    error.value = e.message || e.response?.data?.message || 'Falha no login';
   } finally {
     loading.value = false;
   }

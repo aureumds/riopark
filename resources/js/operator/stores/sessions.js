@@ -1,6 +1,5 @@
 import { defineStore } from 'pinia';
 import { uuidv4 } from '../../uuid';
-import api from '../api/client';
 import { db } from '../db';
 import { queueEvent } from '../services/sync';
 import { calculateAmount, formatPlate, normalizePlate } from '../services/tariff';
@@ -13,27 +12,20 @@ export const useSessionStore = defineStore('sessions', {
   }),
 
   actions: {
-    async loadActive() {
+    ensureLicense() {
       const auth = useAuthStore();
-      const localActive = await db.sessions.where('status').equals('active').toArray();
-
-      if (auth.online && auth.token) {
-        try {
-          const { data } = await api.get('/sessions/active');
-          this.active = data.sessions;
-          for (const s of data.sessions) {
-            await db.sessions.put({ ...s, local_uuid: s.local_uuid, sync_status: 'synced' });
-          }
-          return;
-        } catch {
-          /* fallback */
-        }
+      if (!auth.licenseValid) {
+        throw new Error('Licença vencida. Conecte à internet e renove.');
       }
+    },
 
+    async loadActive() {
+      const localActive = await db.sessions.where('status').equals('active').toArray();
       this.active = localActive;
     },
 
     async registerEntry(plate) {
+      this.ensureLicense();
       const auth = useAuthStore();
       const shiftStore = useShiftStore();
       if (!shiftStore.current) {
@@ -52,22 +44,8 @@ export const useSessionStore = defineStore('sessions', {
         entry_at: new Date().toISOString(),
         status: 'active',
         shift_local_uuid: shiftStore.current?.local_uuid,
+        parking_lot_id: auth.parkingLot?.id,
       };
-
-      if (auth.online) {
-        try {
-          const { data } = await api.post('/sessions/entry', {
-            plate,
-            local_uuid,
-          });
-          this.active.push(data.session);
-          await db.sessions.put({ ...data.session, sync_status: 'synced' });
-          this.maybePrint('entry', data.session);
-          return data.session;
-        } catch (e) {
-          if (e.response?.status === 422) throw new Error(e.response.data.message);
-        }
-      }
 
       await db.sessions.put({ ...session, sync_status: 'pending' });
       await queueEvent('session_entry', {
@@ -80,10 +58,14 @@ export const useSessionStore = defineStore('sessions', {
       this.active.push(session);
       auth.pendingSync = await db.sync_queue.count();
       this.maybePrint('entry', session);
+      if (auth.online) {
+        auth.sync();
+      }
       return session;
     },
 
     async registerExit(plate) {
+      this.ensureLicense();
       const auth = useAuthStore();
       const normalized = normalizePlate(plate);
       const session = this.active.find((s) => s.plate_normalized === normalized);
@@ -92,23 +74,6 @@ export const useSessionStore = defineStore('sessions', {
 
       const exitAt = new Date();
       const amount = calculateAmount(auth.tariff, session.entry_at, exitAt);
-
-      if (auth.online) {
-        try {
-          const { data } = await api.post('/sessions/exit', { plate });
-          await db.sessions.update(session.local_uuid, {
-            status: 'completed',
-            exit_at: data.session.exit_at,
-            amount: data.amount,
-            sync_status: 'synced',
-          });
-          this.active = this.active.filter((s) => s.local_uuid !== session.local_uuid);
-          this.maybePrint('exit', { ...session, amount: data.amount, exit_at: exitAt.toISOString() });
-          return { amount: data.amount, session: data.session };
-        } catch (e) {
-          if (e.response?.status === 404) throw new Error('Veículo não encontrado');
-        }
-      }
 
       await db.sessions.update(session.local_uuid, {
         status: 'completed',
@@ -125,27 +90,37 @@ export const useSessionStore = defineStore('sessions', {
       this.active = this.active.filter((s) => s.local_uuid !== session.local_uuid);
       auth.pendingSync = await db.sync_queue.count();
       this.maybePrint('exit', { ...session, amount, exit_at: exitAt.toISOString() });
+      if (auth.online) {
+        auth.sync();
+      }
       return { amount, session };
     },
 
     async preview(plate) {
+      this.ensureLicense();
       const auth = useAuthStore();
       const normalized = normalizePlate(plate);
       const session = this.active.find((s) => s.plate_normalized === normalized);
       if (!session) throw new Error('Veículo não encontrado');
 
-      if (auth.online) {
-        try {
-          const { data } = await api.post('/sessions/preview', { plate });
-          return data;
-        } catch {
-          /* fallback */
-        }
-      }
-
       const amount = calculateAmount(auth.tariff, session.entry_at);
       const duration_minutes = Math.floor((Date.now() - new Date(session.entry_at)) / 60000);
       return { session, amount, duration_minutes };
+    },
+
+    async closingSummary() {
+      const completed = await db.sessions.where('status').equals('completed').toArray();
+      const start = new Date();
+      start.setHours(0, 0, 0, 0);
+      const today = completed.filter((s) => s.exit_at && new Date(s.exit_at) >= start);
+      const total = today.reduce((sum, s) => sum + Number(s.amount || 0), 0);
+      const active = await db.sessions.where('status').equals('active').toArray();
+      return {
+        exits: today.length,
+        total,
+        inYard: active.length,
+        sessions: today,
+      };
     },
 
     maybePrint(type, session) {

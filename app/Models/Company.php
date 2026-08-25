@@ -19,6 +19,8 @@ class Company extends Model
         'print_ticket_on_entry',
         'print_ticket_on_exit',
         'active',
+        'subscription_status',
+        'paid_until',
     ];
 
     protected function casts(): array
@@ -27,6 +29,7 @@ class Company extends Model
             'print_ticket_on_entry' => 'boolean',
             'print_ticket_on_exit' => 'boolean',
             'active' => 'boolean',
+            'paid_until' => 'date',
         ];
     }
 
@@ -53,6 +56,16 @@ class Company extends Model
     public function dailyClosings(): HasMany
     {
         return $this->hasMany(DailyClosing::class);
+    }
+
+    public function devices(): HasMany
+    {
+        return $this->hasMany(Device::class);
+    }
+
+    public function licenses(): HasMany
+    {
+        return $this->hasMany(License::class);
     }
 
     public function activeTariff(): ?TariffRule
