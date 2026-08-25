@@ -26,12 +26,12 @@ jobs:
       with:
         gradle-version: '8.2'
     
-    - name: Build Debug APK with Gradle
+    - name: Build Release APK
       working-directory: android
-      run: gradle assembleDebug --no-daemon --stacktrace
-    
+      run: gradle assembleRelease --no-daemon --stacktrace
+
     - name: Upload APK
       uses: actions/upload-artifact@v4
       with:
-        name: app-debug
-        path: android/app/build/outputs/apk/debug/app-debug.apk
+        name: rio-park-apk
+        path: android/app/build/outputs/apk/release/app-release.apk
