@@ -30,7 +30,7 @@ class MainActivity : AppCompatActivity() {
         }
 
         setupWebView(baseUrl)
-        webView.loadUrl("$baseUrl/operador")
+        webView.loadUrl("$baseUrl/operador-lite")
     }
 
     private fun setupWebView(baseUrl: String) {

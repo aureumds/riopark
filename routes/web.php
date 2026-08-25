@@ -32,6 +32,34 @@ Route::post('/logout', [LoginController::class, 'destroy'])
 
 Route::view('/operador', 'operator')->name('operator');
 
+Route::prefix('operador-lite')->name('operator-lite.')->group(function () {
+    Route::middleware('guest')->group(function () {
+        Route::get('/login', [\App\Http\Controllers\Operator\Lite\AuthController::class, 'showLogin'])->name('login');
+        Route::post('/login', [\App\Http\Controllers\Operator\Lite\AuthController::class, 'login']);
+    });
+
+    Route::middleware(['auth', 'role:operator'])->group(function () {
+        Route::get('/licenca', [\App\Http\Controllers\Operator\Lite\LicenseController::class, 'show'])->name('license');
+        Route::post('/licenca', [\App\Http\Controllers\Operator\Lite\LicenseController::class, 'renew']);
+        Route::post('/logout', [\App\Http\Controllers\Operator\Lite\AuthController::class, 'logout'])->name('logout');
+        Route::post('/sync', [\App\Http\Controllers\Operator\Lite\SyncController::class, 'push'])->name('sync');
+
+        Route::middleware('operator.license')->group(function () {
+            Route::get('/', [\App\Http\Controllers\Operator\Lite\DashboardController::class, 'index'])->name('home');
+            Route::get('/entrada', [\App\Http\Controllers\Operator\Lite\SessionController::class, 'showEntry'])->name('entry');
+            Route::post('/entrada', [\App\Http\Controllers\Operator\Lite\SessionController::class, 'entry']);
+            Route::get('/saida', [\App\Http\Controllers\Operator\Lite\SessionController::class, 'showExit'])->name('exit');
+            Route::post('/saida', [\App\Http\Controllers\Operator\Lite\SessionController::class, 'exit']);
+            Route::get('/saida/preview', [\App\Http\Controllers\Operator\Lite\SessionController::class, 'preview'])->name('exit.preview');
+            Route::get('/patio', [\App\Http\Controllers\Operator\Lite\SessionController::class, 'yard'])->name('yard');
+            Route::get('/turno', [\App\Http\Controllers\Operator\Lite\ShiftController::class, 'show'])->name('shift');
+            Route::post('/turno/abrir', [\App\Http\Controllers\Operator\Lite\ShiftController::class, 'open'])->name('shift.open');
+            Route::post('/turno/fechar', [\App\Http\Controllers\Operator\Lite\ShiftController::class, 'close'])->name('shift.close');
+            Route::get('/fechamento', [\App\Http\Controllers\Operator\Lite\SessionController::class, 'closing'])->name('closing');
+        });
+    });
+});
+
 Route::middleware(['auth', 'role:super_admin'])->prefix('super')->name('super.')->group(function () {
     Route::get('/dashboard', \App\Livewire\Super\Dashboard::class)->name('dashboard');
     Route::get('/companies', \App\Livewire\Super\Companies::class)->name('companies');
