@@ -41,10 +41,12 @@ class MainActivity : AppCompatActivity() {
 
         // Always use HTTPS.
         url = url.trimEnd('/')
-        if (url.startsWith("http://")) {
-            url = "https://" + url.removePrefix("http://")
-            prefs.edit().putString("base_url", url).apply()
+        url = when {
+            url.startsWith("https://") -> url
+            url.startsWith("http://")  -> "https://" + url.removePrefix("http://")
+            else                       -> "https://$url"
         }
+        prefs.edit().putString("base_url", url).apply()
         baseUrl = url
 
         setupWebView()
@@ -69,7 +71,6 @@ class MainActivity : AppCompatActivity() {
             javaScriptEnabled = true
             domStorageEnabled = true
             databaseEnabled = true
-            // Use cache when available; fall back to network when stale.
             cacheMode = WebSettings.LOAD_CACHE_ELSE_NETWORK
             mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
         }
@@ -77,18 +78,33 @@ class MainActivity : AppCompatActivity() {
         webView.webViewClient = object : WebViewClient() {
 
             override fun onPageFinished(view: WebView?, url: String?) {
-                // Reset offline retry flag and persist cookies after every successful load.
                 offlineRetry = false
                 view?.settings?.cacheMode = WebSettings.LOAD_CACHE_ELSE_NETWORK
                 CookieManager.getInstance().flush()
             }
 
+            /**
+             * Android 6 (API 23) calls this deprecated version for ALL resource errors,
+             * not just the main page. We filter by comparing the failing URL to the
+             * current page URL to avoid triggering offline mode for a missing image/CSS.
+             */
+            @Suppress("DEPRECATION", "OverridingDeprecatedMember")
             override fun onReceivedError(
                 view: WebView?,
                 errorCode: Int,
                 description: String?,
                 failingUrl: String?
             ) {
+                if (failingUrl.isNullOrBlank()) return
+
+                // Only handle errors for the main document, not sub-resources.
+                val pageUrl = view?.url ?: ""
+                val isMainFrame = pageUrl.isEmpty()                     // first load
+                    || failingUrl == pageUrl                            // exact match
+                    || pageUrl.startsWith(failingUrl.substringBefore("?")) // same path
+
+                if (!isMainFrame) return
+
                 handleLoadError(view, failingUrl)
             }
 
@@ -100,7 +116,7 @@ class MainActivity : AppCompatActivity() {
                 return rewriteHttpToHttps(view, url)
             }
 
-            @Deprecated("Deprecated in Java")
+            @Suppress("DEPRECATION", "OverridingDeprecatedMember")
             override fun shouldOverrideUrlLoading(view: WebView?, url: String?): Boolean {
                 if (url.isNullOrBlank()) return false
                 return rewriteHttpToHttps(view, url)
@@ -118,14 +134,11 @@ class MainActivity : AppCompatActivity() {
     }
 
     /**
-     * Called when a page load fails (no network or DNS error).
-     * Strategy:
-     *   1st failure → switch to LOAD_CACHE_ONLY and reload (uses cached pages).
-     *   2nd failure → cache is empty too; load the bundled offline fallback from assets.
+     * 1st failure → switch to LOAD_CACHE_ONLY and reload (serves cached page).
+     * 2nd failure → cache empty too; load the bundled offline fallback from assets.
      */
     private fun handleLoadError(view: WebView?, failingUrl: String?) {
         if (offlineRetry) {
-            // Cache was empty too — load bundled offline page.
             offlineRetry = false
             view?.settings?.cacheMode = WebSettings.LOAD_CACHE_ELSE_NETWORK
             view?.loadUrl("file:///android_asset/offline/index.html")
@@ -143,13 +156,13 @@ class MainActivity : AppCompatActivity() {
 
     private fun isNetworkAvailable(): Boolean {
         val cm = getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager
+        @Suppress("DEPRECATION")
         val info = cm?.activeNetworkInfo
         return info?.isConnected == true
     }
 
     override fun onPause() {
         super.onPause()
-        // Flush cookies to disk so the session survives process death.
         CookieManager.getInstance().flush()
     }
 
@@ -158,7 +171,7 @@ class MainActivity : AppCompatActivity() {
         CookieManager.getInstance().flush()
     }
 
-    @Deprecated("Deprecated in Java")
+    @Suppress("DEPRECATION", "OverridingDeprecatedMember")
     override fun onBackPressed() {
         if (webView.canGoBack()) {
             webView.goBack()
@@ -188,7 +201,6 @@ class RioParkBridge(private val activity: Activity) {
         return prefs.getString("base_url", "") ?: ""
     }
 
-    /** Called from offline.html to get the server base URL so it can redirect when back online. */
     @JavascriptInterface
     fun getServerUrl(): String {
         val prefs = activity.getSharedPreferences("riopark", Context.MODE_PRIVATE)
