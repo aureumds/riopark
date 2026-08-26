@@ -21,6 +21,7 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var webView: WebView
     private var baseUrl: String = ""
+    private val mainHandler = Handler(Looper.getMainLooper())
 
     // Prevents an infinite reload loop when both network AND cache fail.
     private var offlineRetry = false
@@ -51,7 +52,7 @@ class MainActivity : AppCompatActivity() {
 
         setupWebView()
 
-        // Load from cache when offline to avoid "ERR_INTERNET_DISCONNECTED" on startup.
+        // Load from cache when offline to avoid error on startup.
         if (!isNetworkAvailable()) {
             webView.settings.cacheMode = WebSettings.LOAD_CACHE_ONLY
         }
@@ -60,7 +61,6 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun setupWebView() {
-        // Accept and persist cookies across sessions.
         CookieManager.getInstance().apply {
             setAcceptCookie(true)
             setAcceptThirdPartyCookies(webView, true)
@@ -84,9 +84,8 @@ class MainActivity : AppCompatActivity() {
             }
 
             /**
-             * Android 6 (API 23) calls this deprecated version for ALL resource errors,
-             * not just the main page. We filter by comparing the failing URL to the
-             * current page URL to avoid triggering offline mode for a missing image/CSS.
+             * Android 6 calls this deprecated callback for ALL resource errors.
+             * We only react when the main document fails.
              */
             @Suppress("DEPRECATION", "OverridingDeprecatedMember")
             override fun onReceivedError(
@@ -97,35 +96,49 @@ class MainActivity : AppCompatActivity() {
             ) {
                 if (failingUrl.isNullOrBlank()) return
 
-                // Only handle errors for the main document, not sub-resources.
                 val pageUrl = view?.url ?: ""
-                val isMainFrame = pageUrl.isEmpty()                     // first load
-                    || failingUrl == pageUrl                            // exact match
-                    || pageUrl.startsWith(failingUrl.substringBefore("?")) // same path
+                val isMainFrame = pageUrl.isEmpty()
+                    || failingUrl == pageUrl
+                    || pageUrl.startsWith(failingUrl.substringBefore("?"))
 
                 if (!isMainFrame) return
 
                 handleLoadError(view, failingUrl)
             }
 
+            /**
+             * New API (API 21+) — called on Android 6+.
+             * NEVER intercept POST requests (form submissions): that would convert
+             * the POST to a GET and break CSRF / login flow.
+             * For GET http:// URLs: schedule the https:// reload via Handler to
+             * avoid the Android 6 WebView bug where calling loadUrl() directly
+             * inside shouldOverrideUrlLoading() silently drops the navigation.
+             */
             override fun shouldOverrideUrlLoading(
                 view: WebView?,
                 request: WebResourceRequest?
             ): Boolean {
                 val url = request?.url?.toString() ?: return false
-                return rewriteHttpToHttps(view, url)
+
+                // Never intercept POST (form submissions, login, etc.).
+                if (request.method?.uppercase() == "POST") return false
+
+                // Only rewrite insecure http:// GET navigations.
+                if (!url.startsWith("http://")) return false
+
+                val httpsUrl = "https://" + url.removePrefix("http://")
+                mainHandler.post { view?.loadUrl(httpsUrl) }
+                return true
             }
 
+            /**
+             * Deprecated API — called on very old WebView builds.
+             * Cannot detect POST here, so never override; let WebView handle
+             * all navigations natively to avoid breaking form submissions.
+             */
             @Suppress("DEPRECATION", "OverridingDeprecatedMember")
             override fun shouldOverrideUrlLoading(view: WebView?, url: String?): Boolean {
-                if (url.isNullOrBlank()) return false
-                return rewriteHttpToHttps(view, url)
-            }
-
-            private fun rewriteHttpToHttps(view: WebView?, url: String): Boolean {
-                if (!url.startsWith("http://")) return false
-                view?.loadUrl("https://" + url.removePrefix("http://"))
-                return true
+                return false
             }
         }
 
@@ -133,10 +146,6 @@ class MainActivity : AppCompatActivity() {
         webView.addJavascriptInterface(RioParkBridge(this), "RioParkBridge")
     }
 
-    /**
-     * 1st failure → switch to LOAD_CACHE_ONLY and reload (serves cached page).
-     * 2nd failure → cache empty too; load the bundled offline fallback from assets.
-     */
     private fun handleLoadError(view: WebView?, failingUrl: String?) {
         if (offlineRetry) {
             offlineRetry = false
@@ -160,7 +169,6 @@ class MainActivity : AppCompatActivity() {
             @Suppress("DEPRECATION")
             cm?.activeNetworkInfo?.isConnected == true
         } catch (e: Exception) {
-            // If permission is missing or CM unavailable, assume online and let WebView decide.
             true
         }
     }

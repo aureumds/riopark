@@ -11,8 +11,8 @@ android {
         applicationId = "com.riopark.operator"
         minSdk = 21
         targetSdk = 34
-        versionCode = 8
-        versionName = "1.3.2"
+        versionCode = 9
+        versionName = "1.3.3"
         ndk {
             abiFilters.clear()
             abiFilters.add("armeabi-v7a")

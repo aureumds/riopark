@@ -18,7 +18,7 @@
             <label for="password">Senha</label>
             <input type="password" name="password" id="password" required>
         </div>
-        <button type="submit" class="lite-btn lite-btn-primary">Entrar</button>
+        <button type="submit" class="lite-btn lite-btn-primary" id="btn-login">Entrar</button>
     </form>
 </div>
 @endsection
@@ -28,6 +28,14 @@
 (function () {
     var uid = RioParkLite.getDeviceUid();
     document.getElementById('device_uid').value = uid;
+
+    document.getElementById('lite-login-form').addEventListener('submit', function () {
+        var btn = document.getElementById('btn-login');
+        if (btn) {
+            btn.textContent = 'Aguarde...';
+            btn.disabled = true;
+        }
+    });
 })();
 </script>
 @endpush
