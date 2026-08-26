@@ -179,6 +179,36 @@ class SessionController extends Controller
         ]);
     }
 
+    public function vehicleDetail(Request $request, string $plate): View|RedirectResponse
+    {
+        $user = $request->user();
+        $normalized = $this->plateNormalizer->normalize($plate);
+
+        $session = ParkingSession::where('parking_lot_id', $user->parking_lot_id)
+            ->where('plate_normalized', $normalized)
+            ->where('status', ParkingSession::STATUS_ACTIVE)
+            ->first();
+
+        if (! $session) {
+            return redirect()->route('operator-lite.yard')
+                ->withErrors(['plate' => 'Veículo não encontrado no pátio.']);
+        }
+
+        $tariff = $user->company?->activeTariff();
+        $amount = $tariff
+            ? $this->tariffCalculator->calculate($tariff, $session->entry_at, now())
+            : 0;
+
+        $durationMinutes = $session->entry_at->diffInMinutes(now());
+
+        return view('operator-lite.yard-detail', [
+            'session' => $session,
+            'amount' => $amount,
+            'durationMinutes' => $durationMinutes,
+            'bootstrap' => $this->bootstrapPayload($user),
+        ]);
+    }
+
     public function closing(Request $request): View
     {
         return view('operator-lite.closing', [

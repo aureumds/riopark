@@ -10,9 +10,11 @@
 @else
     <ul class="lite-list">
         @foreach($sessions as $session)
-            <li class="lite-list-item">
-                <span class="lite-plate">{{ $session->plate }}</span>
-                <span class="lite-muted">{{ $session->entry_at->format('H:i') }}</span>
+            <li class="lite-list-item lite-list-item-link">
+                <a href="{{ route('operator-lite.yard.detail', ['plate' => $session->plate]) }}" class="lite-list-link">
+                    <span class="lite-plate">{{ $session->plate }}</span>
+                    <span class="lite-muted">{{ $session->entry_at->format('H:i') }} &rsaquo;</span>
+                </a>
             </li>
         @endforeach
     </ul>

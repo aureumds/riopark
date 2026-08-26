@@ -52,6 +52,7 @@ Route::prefix('operador-lite')->name('operator-lite.')->group(function () {
             Route::post('/saida', [\App\Http\Controllers\Operator\Lite\SessionController::class, 'exit']);
             Route::get('/saida/preview', [\App\Http\Controllers\Operator\Lite\SessionController::class, 'preview'])->name('exit.preview');
             Route::get('/patio', [\App\Http\Controllers\Operator\Lite\SessionController::class, 'yard'])->name('yard');
+            Route::get('/patio/{plate}', [\App\Http\Controllers\Operator\Lite\SessionController::class, 'vehicleDetail'])->name('yard.detail');
             Route::get('/turno', [\App\Http\Controllers\Operator\Lite\ShiftController::class, 'show'])->name('shift');
             Route::post('/turno/abrir', [\App\Http\Controllers\Operator\Lite\ShiftController::class, 'open'])->name('shift.open');
             Route::post('/turno/fechar', [\App\Http\Controllers\Operator\Lite\ShiftController::class, 'close'])->name('shift.close');

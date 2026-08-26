@@ -301,55 +301,45 @@ html, body {
     margin-top: 16px;
 }
 
-.lite-plate-display {
-    text-align: center;
-    font-size: 28px;
+/* Physical keyboard input — replaces on-screen plate keyboard */
+.lite-plate-input {
+    width: 100%;
+    padding: 18px 14px;
+    font-size: 26px;
     font-weight: 700;
     letter-spacing: 0.15em;
-    padding: 18px;
-    background: #fff;
-    border: 1px solid #e5e7eb;
+    text-align: center;
+    text-transform: uppercase;
+    border: 2px solid #d1d5db;
     border-radius: 14px;
-    margin-bottom: 14px;
-}
-
-.lite-keyboard {
-    margin-bottom: 16px;
-}
-
-/* Keyboard grid — margins instead of gap */
-.lite-kb-grid {
-    display: -webkit-box;
-    display: -webkit-flex;
-    display: flex;
-    -webkit-flex-wrap: wrap;
-    flex-wrap: wrap;
-    margin: -4px;
-}
-
-.lite-kb-key {
-    width: 33.333%;
-    padding: 14px 4px;
-    margin: 0;
-    font-size: 18px;
-    font-weight: 600;
     background: #fff;
-    border: 1px solid #d1d5db;
-    border-radius: 12px;
-    cursor: pointer;
     -webkit-appearance: none;
     appearance: none;
-    /* simulate gap with box model */
-    width: calc(33.333% - 8px);
-    margin: 4px;
 }
 
-.lite-kb-key:active {
-    background: #f3f4f6;
+.lite-plate-input:focus {
+    border-color: #1e40af;
+    outline: none;
 }
 
-.lite-kb-key.lite-kb-small {
-    font-size: 14px;
+/* Yard detail */
+.lite-yard-detail-plate {
+    text-align: center;
+    font-size: 36px;
+    font-weight: 700;
+    letter-spacing: 0.15em;
+    padding: 20px;
+    background: #fff;
+    border: 2px solid #1e40af;
+    border-radius: 16px;
+    margin-bottom: 20px;
+    color: #1e40af;
+}
+
+.lite-amount-green {
+    font-size: 28px;
+    color: #059669;
+    font-weight: 700;
 }
 
 .lite-preview {
@@ -396,4 +386,24 @@ html, body {
 .lite-plate {
     font-weight: 700;
     letter-spacing: 0.05em;
+}
+
+.lite-list-item-link {
+    padding: 0;
+}
+
+.lite-list-link {
+    display: -webkit-box;
+    display: -webkit-flex;
+    display: flex;
+    -webkit-box-pack: justify;
+    -webkit-justify-content: space-between;
+    justify-content: space-between;
+    -webkit-box-align: center;
+    -webkit-align-items: center;
+    align-items: center;
+    width: 100%;
+    padding: 16px;
+    text-decoration: none;
+    color: inherit;
 }

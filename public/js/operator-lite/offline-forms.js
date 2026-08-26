@@ -35,7 +35,10 @@ var LiteOfflineForms = (function () {
 
     function initEntry(form) {
         handleOfflineSubmit(form, function () {
-            var plate = document.getElementById('plate').value;
+            // Support both the new physical-keyboard input (#plate-input)
+            // and the legacy hidden field (#plate) for backward compatibility.
+            var plateEl = document.getElementById('plate-input') || document.getElementById('plate');
+            var plate = plateEl ? plateEl.value : '';
             if (plate.length < 4) {
                 alert('Informe a placa completa.');
                 return null;
@@ -54,7 +57,7 @@ var LiteOfflineForms = (function () {
             return {
                 type: 'session_entry',
                 local_uuid: localUuid,
-                plate: plate,
+                plate: RioParkLite.normalizePlate(plate),
                 plate_normalized: RioParkLite.normalizePlate(plate),
                 parking_lot_id: cache.parking_lot ? cache.parking_lot.id : null,
                 shift_local_uuid: shift ? shift.local_uuid : null,
@@ -73,7 +76,8 @@ var LiteOfflineForms = (function () {
 
     function initExit(form) {
         handleOfflineSubmit(form, function () {
-            var plate = document.getElementById('plate').value;
+            var plateEl = document.getElementById('plate-input') || document.getElementById('plate');
+            var plate = plateEl ? plateEl.value : '';
             if (plate.length < 4) {
                 alert('Informe a placa completa.');
                 return null;

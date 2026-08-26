@@ -8,15 +8,31 @@
 <form method="POST" action="{{ route('operator-lite.exit') }}" id="lite-exit-form" class="lite-form" data-lite-offline="exit">
     @csrf
     <input type="hidden" name="local_uuid" id="local_uuid" value="">
-    <input type="hidden" name="plate" id="plate" value="">
 
-    <div id="plate-display" class="lite-plate-display">———</div>
-    <div id="plate-keyboard" class="lite-keyboard" data-plate-keyboard="plate-display" data-plate-input="plate"></div>
+    <div class="lite-field">
+        <label for="plate-input">Placa do veículo</label>
+        <input type="text"
+               id="plate-input"
+               name="plate"
+               maxlength="8"
+               autocomplete="off"
+               autocorrect="off"
+               autocapitalize="characters"
+               spellcheck="false"
+               placeholder="Ex: ABC1234"
+               class="lite-plate-input"
+               autofocus>
+    </div>
 
     <div id="exit-preview" class="lite-preview" style="display:none">
-        <p class="lite-label">Valor estimado</p>
+        <p class="lite-label">Placa</p>
+        <p class="lite-value lite-plate" id="preview-plate">—</p>
+        <p class="lite-label">Entrada</p>
+        <p class="lite-value" id="preview-entry">—</p>
+        <p class="lite-label">Tempo estacionado</p>
+        <p class="lite-value" id="preview-duration">—</p>
+        <p class="lite-label">Valor a cobrar</p>
         <p class="lite-value lite-amount" id="preview-amount">R$ 0,00</p>
-        <p class="lite-muted" id="preview-duration"></p>
     </div>
 
     <button type="button" class="lite-btn lite-btn-outline" id="btn-preview">Consultar valor</button>
@@ -25,16 +41,38 @@
 @endsection
 
 @push('scripts')
-<script src="{{ asset('js/operator-lite/plate-keyboard.js') }}"></script>
 <script src="{{ asset('js/operator-lite/offline-forms.js') }}"></script>
 <script>
 (function () {
     document.getElementById('local_uuid').value = RioParkLite.uuid();
-    PlateKeyboard.init(document.getElementById('plate-keyboard'));
-    LiteOfflineForms.initExit(document.getElementById('lite-exit-form'));
+
+    var plateInput = document.getElementById('plate-input');
+
+    plateInput.addEventListener('input', function () {
+        var v = this.value.replace(/[^a-zA-Z0-9]/g, '').toUpperCase().slice(0, 7);
+        this.value = v;
+        document.getElementById('exit-preview').style.display = 'none';
+    });
+
+    plateInput.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            document.getElementById('btn-preview').click();
+        }
+    });
+
+    // Pre-fill plate from query string (coming from yard detail).
+    var params = new URLSearchParams(window.location.search);
+    var pre = params.get('plate');
+    if (pre) {
+        plateInput.value = pre.replace(/[^a-zA-Z0-9]/g, '').toUpperCase().slice(0, 7);
+        setTimeout(function () {
+            document.getElementById('btn-preview').click();
+        }, 400);
+    }
 
     document.getElementById('btn-preview').addEventListener('click', function () {
-        var plate = document.getElementById('plate').value;
+        var plate = plateInput.value;
         if (plate.length < 4) return;
 
         if (!navigator.onLine) {
@@ -44,7 +82,7 @@
                 return;
             }
             var amount = RioParkLite.calculateAmount(session.entry_at, new Date().toISOString());
-            showPreview(amount, session.entry_at);
+            showPreview(plate, amount, session.entry_at);
             return;
         }
 
@@ -54,7 +92,7 @@
         xhr.onload = function () {
             if (xhr.status === 200) {
                 var data = JSON.parse(xhr.responseText);
-                showPreview(data.amount, data.session.entry_at);
+                showPreview(plate, data.amount, data.session.entry_at);
             } else {
                 alert('Veículo não encontrado no pátio');
             }
@@ -62,12 +100,22 @@
         xhr.send();
     });
 
-    function showPreview(amount, entryAt) {
+    function showPreview(plate, amount, entryAt) {
+        var entry = new Date(entryAt);
+        var mins = Math.floor((new Date() - entry) / 60000);
+        var h = Math.floor(mins / 60);
+        var m = mins % 60;
+        var durStr = h > 0 ? h + 'h ' + m + 'min' : m + ' min';
+        var entryStr = entry.toLocaleString('pt-BR', {day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit'});
+
         document.getElementById('exit-preview').style.display = 'block';
+        document.getElementById('preview-plate').textContent = RioParkLite.formatPlate(plate);
+        document.getElementById('preview-entry').textContent = entryStr;
+        document.getElementById('preview-duration').textContent = durStr;
         document.getElementById('preview-amount').textContent = 'R$ ' + RioParkLite.formatMoney(amount);
-        var mins = Math.floor((new Date() - new Date(entryAt)) / 60000);
-        document.getElementById('preview-duration').textContent = 'Tempo: ' + mins + ' min';
     }
+
+    LiteOfflineForms.initExit(document.getElementById('lite-exit-form'));
 })();
 </script>
 @endpush
