@@ -239,8 +239,12 @@ var RioParkLite = (function () {
     }
 
     function printTicket(text) {
-        if (window.RioParkBridge && window.RioParkBridge.printTicket) {
-            window.RioParkBridge.printTicket(text);
+        try {
+            if (window.RioParkBridge && window.RioParkBridge.printTicket) {
+                window.RioParkBridge.printTicket(String(text || ''));
+            }
+        } catch (e) {
+            // Never let print failures break entry/exit flow on POS WebView.
         }
     }
 
