@@ -14,11 +14,12 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->redirectGuestsTo(function (Request $request) {
+            // Use path (not named route) so a stale route cache never throws RouteNotFound.
             if ($request->is('operador-lite') || $request->is('operador-lite/*')) {
-                return route('operator-lite.login');
+                return '/operador-lite/login';
             }
 
-            return route('login');
+            return '/login';
         });
 
         $middleware->alias([

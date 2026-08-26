@@ -31,6 +31,13 @@
                 Entrar
             </button>
         </form>
+
+        <p class="text-center text-gray-500 text-sm mt-6">
+            É operador na maquininha?
+            <a href="{{ url('/operador-lite/login') }}" class="text-blue-700 font-medium underline">
+                Abrir Operador Lite
+            </a>
+        </p>
     </div>
 </body>
 </html>
