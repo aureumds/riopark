@@ -1,59 +1,77 @@
 package com.riopark.operator
 
+import android.content.ActivityNotFoundException
 import android.content.Context
+import android.content.Intent
 import android.os.Handler
 import android.os.Looper
-import android.print.PrintAttributes
-import android.print.PrintManager
 import android.util.Log
-import android.webkit.WebView
-import android.webkit.WebViewClient
+import android.widget.Toast
 
 object PrintHelper {
 
     private const val TAG = "RioParkPrint"
+    private const val RAWBT_PACKAGE = "ru.a402d.rawbtprinter"
+    private const val RAWBT_ACTION = "ru.a402d.rawbtprinter.action.PRINT_TEXT"
 
     fun print(context: Context, text: String) {
-        val appContext = context.applicationContext
         Handler(Looper.getMainLooper()).post {
             try {
-                val webView = WebView(appContext)
-                webView.webViewClient = object : WebViewClient() {
-                    override fun onPageFinished(view: WebView?, url: String?) {
-                        try {
-                            val printManager = appContext.getSystemService(Context.PRINT_SERVICE) as? PrintManager
-                            if (printManager == null) {
-                                Log.w(TAG, "PrintManager unavailable on this device")
-                                return
-                            }
-                            val adapter = webView.createPrintDocumentAdapter("RioParkTicket")
-                            printManager.print(
-                                "RioPark Ticket",
-                                adapter,
-                                PrintAttributes.Builder().build()
-                            )
-                        } catch (e: Exception) {
-                            Log.e(TAG, "Failed to start print job", e)
-                        }
-                    }
-                }
-
-                val safe = text
-                    .replace("&", "&amp;")
-                    .replace("<", "&lt;")
-                    .replace(">", "&gt;")
-                    .replace("\n", "<br>")
-
-                val html = """
-                    <html><body style="font-family: monospace; font-size: 12px;">
-                    <pre>$safe</pre>
-                    </body></html>
-                """.trimIndent()
-
-                webView.loadDataWithBaseURL(null, html, "text/html", "UTF-8", null)
+                sendToRawBT(context, text)
             } catch (e: Exception) {
-                Log.e(TAG, "Print helper failed", e)
+                Log.e(TAG, "PrintHelper failed", e)
             }
         }
+    }
+
+    private fun sendToRawBT(context: Context, rawText: String) {
+        val formatted = formatTicket(context, rawText)
+
+        val intent = Intent(RAWBT_ACTION).apply {
+            setPackage(RAWBT_PACKAGE)
+            putExtra("text", formatted)
+            // Feed extra lines after print so ticket exits the cutter
+            putExtra("extraLineFeed", 4)
+        }
+
+        try {
+            context.startActivity(intent)
+            Log.d(TAG, "Sent to RawBT OK")
+        } catch (e: ActivityNotFoundException) {
+            Log.w(TAG, "RawBT not installed — falling back to Toast")
+            Toast.makeText(
+                context,
+                "Instale o app RawBT Library para imprimir tickets.",
+                Toast.LENGTH_LONG
+            ).show()
+        }
+    }
+
+    /**
+     * Receives text in any format from the JS bridge and normalises it into
+     * a clean monospaced ticket layout understood by Epson thermal printers
+     * via RawBT.
+     *
+     * Expected input (newline-separated key:value pairs or free text):
+     *   "Rio Park\nENTRADA\nPlaca: ABC-1234\nEntrada: ..."
+     */
+    private fun formatTicket(context: Context, text: String): String {
+        val divider = "================================"
+        val lines = text.trim().lines()
+
+        val body = StringBuilder()
+        body.appendLine(divider)
+
+        for (line in lines) {
+            val trimmed = line.trim()
+            if (trimmed.isNotEmpty()) {
+                body.appendLine(trimmed.take(32))
+            }
+        }
+
+        body.appendLine(divider)
+        body.appendLine()
+
+        return body.toString()
     }
 }

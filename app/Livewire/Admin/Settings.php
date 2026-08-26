@@ -34,9 +34,15 @@ class Settings extends Component
             'accent_color' => ['required', 'string'],
         ]);
 
-        Company::where('id', auth()->user()->company_id)->update([
-            'print_ticket_on_entry' => $this->print_ticket_on_entry,
-            'print_ticket_on_exit' => $this->print_ticket_on_exit,
+        $company = auth()->user()->company;
+
+        if (! $company) {
+            return;
+        }
+
+        $company->update([
+            'print_ticket_on_entry' => (bool) $this->print_ticket_on_entry,
+            'print_ticket_on_exit' => (bool) $this->print_ticket_on_exit,
             'primary_color' => $this->primary_color,
             'accent_color' => $this->accent_color,
         ]);
