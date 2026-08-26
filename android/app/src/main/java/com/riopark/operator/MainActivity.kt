@@ -155,10 +155,14 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun isNetworkAvailable(): Boolean {
-        val cm = getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager
-        @Suppress("DEPRECATION")
-        val info = cm?.activeNetworkInfo
-        return info?.isConnected == true
+        return try {
+            val cm = getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager
+            @Suppress("DEPRECATION")
+            cm?.activeNetworkInfo?.isConnected == true
+        } catch (e: Exception) {
+            // If permission is missing or CM unavailable, assume online and let WebView decide.
+            true
+        }
     }
 
     override fun onPause() {
