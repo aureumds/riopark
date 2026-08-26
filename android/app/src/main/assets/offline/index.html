@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+    <title>Rio Park Operador — Offline</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="lite-body">
+
+<header class="lite-header">
+    <div class="lite-status">
+        <span id="lite-online-indicator" class="lite-badge lite-badge-offline">Offline</span>
+        <span id="lite-sync-indicator" class="lite-sync-count" style="display:none"></span>
+    </div>
+    <span class="lite-header-title" id="header-title">Rio Park</span>
+</header>
+
+<div id="offline-banner" class="lite-alert lite-alert-warning" style="display:none">
+    Sem internet — dados salvos localmente e sincronizados ao reconectar.
+</div>
+
+<main class="lite-main">
+
+    <!-- HOME screen -->
+    <div id="screen-home" class="screen active">
+        <div class="lite-card" id="info-card">
+            <p class="lite-label">Estacionamento</p>
+            <p class="lite-value" id="lot-name">—</p>
+            <p class="lite-label">Turno</p>
+            <p class="lite-value" id="shift-status">—</p>
+        </div>
+        <nav class="lite-nav">
+            <button type="button" class="lite-btn lite-btn-primary lite-btn-lg" onclick="showScreen('screen-entry')">Entrada</button>
+            <button type="button" class="lite-btn lite-btn-accent lite-btn-lg" onclick="showScreen('screen-exit')">Saída</button>
+            <button type="button" class="lite-btn lite-btn-outline lite-btn-lg" onclick="showYard()">Veículos no pátio (<span id="yard-count">0</span>)</button>
+        </nav>
+    </div>
+
+    <!-- ENTRY screen -->
+    <div id="screen-entry" class="screen">
+        <button type="button" class="lite-btn lite-btn-outline" style="margin-bottom:16px" onclick="showScreen('screen-home')">&larr; Voltar</button>
+        <h1 class="lite-page-title">Entrada de veículo</h1>
+        <form id="form-entry" class="lite-form">
+            <input type="hidden" id="entry-uuid" value="">
+            <input type="hidden" id="entry-plate" value="">
+            <div id="entry-plate-display" class="lite-plate-display">———</div>
+            <div id="entry-keyboard" class="lite-keyboard"
+                 data-plate-keyboard="entry-plate-display"
+                 data-plate-input="entry-plate"></div>
+            <button type="submit" class="lite-btn lite-btn-primary lite-btn-lg">Registrar entrada</button>
+        </form>
+    </div>
+
+    <!-- EXIT screen -->
+    <div id="screen-exit" class="screen">
+        <button type="button" class="lite-btn lite-btn-outline" style="margin-bottom:16px" onclick="showScreen('screen-home')">&larr; Voltar</button>
+        <h1 class="lite-page-title">Saída de veículo</h1>
+        <form id="form-exit" class="lite-form">
+            <input type="hidden" id="exit-uuid" value="">
+            <input type="hidden" id="exit-plate" value="">
+            <div id="exit-plate-display" class="lite-plate-display">———</div>
+            <div id="exit-keyboard" class="lite-keyboard"
+                 data-plate-keyboard="exit-plate-display"
+                 data-plate-input="exit-plate"></div>
+            <button type="submit" class="lite-btn lite-btn-accent lite-btn-lg">Registrar saída</button>
+        </form>
+    </div>
+
+    <!-- YARD screen -->
+    <div id="screen-yard" class="screen">
+        <button type="button" class="lite-btn lite-btn-outline" style="margin-bottom:16px" onclick="showScreen('screen-home')">&larr; Voltar</button>
+        <h1 class="lite-page-title">Veículos no pátio</h1>
+        <ul id="yard-list" class="lite-list"></ul>
+        <p id="yard-empty" class="lite-muted lite-center" style="display:none">Nenhum veículo no pátio.</p>
+    </div>
+
+</main>
+
+<script src="store.js"></script>
+<script src="plate-keyboard.js"></script>
+<script>
+(function () {
+
+    /* ---- Bootstrap info from localStorage ---- */
+    var cache = RioParkLite.getCache();
+    var serverUrl = '';
+
+    if (window.RioParkBridge && window.RioParkBridge.getServerUrl) {
+        serverUrl = window.RioParkBridge.getServerUrl();
+    }
+
+    /* ---- Update header and info card ---- */
+    var lotName = (cache.parking_lot && cache.parking_lot.name) ? cache.parking_lot.name : '—';
+    var companyName = (cache.company && cache.company.name) ? cache.company.name : 'Rio Park';
+    document.getElementById('lot-name').textContent = lotName;
+    document.getElementById('header-title').textContent = companyName;
+
+    var shift = RioParkLite.getCurrentShift();
+    document.getElementById('shift-status').textContent = shift ? 'Aberto' : 'Fechado';
+
+    updateYardCount();
+    document.getElementById('offline-banner').style.display = navigator.onLine ? 'none' : 'block';
+
+    /* ---- Screen navigation ---- */
+    window.showScreen = function (id) {
+        var screens = document.querySelectorAll('.screen');
+        for (var i = 0; i < screens.length; i++) {
+            screens[i].classList.remove('active');
+        }
+        document.getElementById(id).classList.add('active');
+
+        if (id === 'screen-home') {
+            updateYardCount();
+            var s = RioParkLite.getCurrentShift();
+            document.getElementById('shift-status').textContent = s ? 'Aberto' : 'Fechado';
+        }
+    };
+
+    window.showYard = function () {
+        var sessions = RioParkLite.getActiveSessions();
+        var list = document.getElementById('yard-list');
+        var empty = document.getElementById('yard-empty');
+        list.innerHTML = '';
+
+        if (!sessions.length) {
+            empty.style.display = 'block';
+        } else {
+            empty.style.display = 'none';
+            for (var i = 0; i < sessions.length; i++) {
+                var s = sessions[i];
+                var li = document.createElement('li');
+                li.className = 'lite-list-item';
+                var entry = s.entry_at ? new Date(s.entry_at).toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'}) : '—';
+                li.innerHTML = '<span class="lite-plate">' + (s.plate || '—') + '</span><span class="lite-muted">' + entry + '</span>';
+                list.appendChild(li);
+            }
+        }
+
+        showScreen('screen-yard');
+    };
+
+    function updateYardCount() {
+        var c = RioParkLite.getActiveSessions().length;
+        document.getElementById('yard-count').textContent = c;
+    }
+
+    /* ---- Plate keyboards ---- */
+    PlateKeyboard.init(document.getElementById('entry-keyboard'));
+    PlateKeyboard.init(document.getElementById('exit-keyboard'));
+
+    document.getElementById('entry-uuid').value = RioParkLite.uuid();
+    document.getElementById('exit-uuid').value = RioParkLite.uuid();
+
+    /* ---- Entry form (offline only) ---- */
+    document.getElementById('form-entry').addEventListener('submit', function (e) {
+        e.preventDefault();
+
+        if (!RioParkLite.isLicenseValid()) {
+            alert('Licença vencida. Conecte para renovar.');
+            return;
+        }
+
+        var plate = document.getElementById('entry-plate').value;
+        if (plate.length < 4) { alert('Informe a placa completa.'); return; }
+        if (RioParkLite.findActiveSession(plate)) { alert('Placa já está no pátio.'); return; }
+
+        var localUuid = document.getElementById('entry-uuid').value || RioParkLite.uuid();
+        var now = new Date().toISOString();
+        var shift = RioParkLite.getCurrentShift();
+        var c = RioParkLite.getCache();
+
+        var payload = {
+            type: 'session_entry',
+            local_uuid: localUuid,
+            plate: plate,
+            plate_normalized: RioParkLite.normalizePlate(plate),
+            parking_lot_id: c.parking_lot ? c.parking_lot.id : null,
+            shift_local_uuid: shift ? shift.local_uuid : null,
+            entry_at: now,
+            session: {
+                local_uuid: localUuid,
+                plate: RioParkLite.formatPlate(plate),
+                plate_normalized: RioParkLite.normalizePlate(plate),
+                entry_at: now,
+                status: 'active'
+            },
+            print_ticket: c.company ? c.company.print_ticket_on_entry : false
+        };
+
+        RioParkLite.queueEvent(payload.type, payload);
+        RioParkLite.handleServerEvent({ type: payload.type, session: payload.session, print_ticket: payload.print_ticket });
+        updateYardCount();
+        document.getElementById('entry-uuid').value = RioParkLite.uuid();
+        document.getElementById('entry-plate').value = '';
+        document.getElementById('entry-plate-display').textContent = '———';
+        alert('Entrada registrada offline: ' + RioParkLite.formatPlate(plate));
+    });
+
+    /* ---- Exit form (offline only) ---- */
+    document.getElementById('form-exit').addEventListener('submit', function (e) {
+        e.preventDefault();
+
+        if (!RioParkLite.isLicenseValid()) {
+            alert('Licença vencida. Conecte para renovar.');
+            return;
+        }
+
+        var plate = document.getElementById('exit-plate').value;
+        if (plate.length < 4) { alert('Informe a placa completa.'); return; }
+
+        var session = RioParkLite.findActiveSession(plate);
+        if (!session) { alert('Veículo não encontrado no pátio.'); return; }
+
+        var localUuid = session.local_uuid || RioParkLite.uuid();
+        var now = new Date().toISOString();
+        var amount = RioParkLite.calculateAmount(session.entry_at, now);
+        var c = RioParkLite.getCache();
+
+        var payload = {
+            type: 'session_exit',
+            local_uuid: localUuid,
+            plate: plate,
+            exit_at: now,
+            amount: amount,
+            payment_method: 'cash',
+            session: {
+                local_uuid: localUuid,
+                plate: session.plate,
+                amount: amount,
+                exit_at: now,
+                status: 'completed'
+            },
+            print_ticket: c.company ? c.company.print_ticket_on_exit : false
+        };
+
+        RioParkLite.queueEvent(payload.type, payload);
+        RioParkLite.handleServerEvent({ type: payload.type, session: payload.session, amount: payload.amount, print_ticket: payload.print_ticket });
+        RioParkLite.addCompletedExit(amount);
+        updateYardCount();
+        document.getElementById('exit-uuid').value = RioParkLite.uuid();
+        document.getElementById('exit-plate').value = '';
+        document.getElementById('exit-plate-display').textContent = '———';
+        alert('Saída registrada offline: ' + RioParkLite.formatPlate(plate) + ' — R$ ' + RioParkLite.formatMoney(amount));
+    });
+
+    /* ---- Return to server when back online ---- */
+    window.addEventListener('online', function () {
+        document.getElementById('offline-banner').style.display = 'none';
+        document.getElementById('lite-online-indicator').textContent = 'Online';
+        document.getElementById('lite-online-indicator').className = 'lite-badge lite-badge-online';
+
+        if (serverUrl) {
+            setTimeout(function () {
+                window.location.replace(serverUrl + '/operador-lite');
+            }, 800);
+        }
+    });
+
+    window.addEventListener('offline', function () {
+        document.getElementById('offline-banner').style.display = 'block';
+    });
+
+})();
+</script>
+</body>
+</html>
