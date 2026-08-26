@@ -27,6 +27,8 @@ return Application::configure(basePath: dirname(__DIR__))
             'operator.license' => \App\Http\Middleware\EnsureOperatorLicense::class,
         ]);
 
+        $middleware->trustProxies(at: '*');
+
         $middleware->statefulApi();
     })
     ->withExceptions(function (Exceptions $exceptions): void {

@@ -9,6 +9,7 @@ import android.os.Looper
 import android.webkit.JavascriptInterface
 import android.webkit.WebChromeClient
 import android.webkit.WebSettings
+import android.webkit.WebResourceRequest
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.Toast
@@ -53,15 +54,22 @@ class MainActivity : AppCompatActivity() {
         }
 
         webView.webViewClient = object : WebViewClient() {
+            override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
+                val url = request?.url?.toString() ?: return false
+                return rewriteHttpToHttps(view, url)
+            }
+
+            @Deprecated("Deprecated in Java")
             override fun shouldOverrideUrlLoading(view: WebView?, url: String?): Boolean {
                 if (url.isNullOrBlank()) return false
-                // Keep navigation inside WebView; upgrade accidental http redirects.
-                val safe = if (url.startsWith("http://")) {
-                    "https://" + url.removePrefix("http://")
-                } else {
-                    url
+                return rewriteHttpToHttps(view, url)
+            }
+
+            private fun rewriteHttpToHttps(view: WebView?, url: String): Boolean {
+                if (!url.startsWith("http://")) {
+                    return false
                 }
-                view?.loadUrl(safe)
+                view?.loadUrl("https://" + url.removePrefix("http://"))
                 return true
             }
         }
